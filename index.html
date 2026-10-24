@@ -8,7 +8,7 @@
   * { margin: 0; padding: 0; box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
   html, body {
     width: 100%; height: 100%;
-    overflow: hidden; /* 禁止页面整体滑动，防止手机端横向溢出 */
+    overflow: hidden; 
     background: linear-gradient(180deg,
       #78838f 0%, #8e99a5 18%, #aab3bd 36%,
       #c9d0d8 54%, #e3e8ed 72%, #f6f8fa 88%, #ffffff 100%);
@@ -248,7 +248,7 @@
   
   .detail-content-box {
     position: relative; width: 90%; max-width: 800px;
-    max-height: 90vh; overflow-y: auto; overflow-x: hidden; /* 防止横向溢出 */
+    max-height: 90vh; overflow-y: auto; overflow-x: hidden; 
     padding: 40px;
     display: flex; flex-direction: column; align-items: center;
     transform: translateY(20px); z-index: 2;
@@ -323,10 +323,9 @@
   /* 文字延迟加快 */
   .random-element-title { font-size: 18px; color: #9e2a2b; font-weight: bold; text-align: center; margin-bottom: 20px; letter-spacing: 2px; opacity: 0; animation: fadeInUp 1.2s ease 1.5s forwards; width: 100%; }
   
-  /* 修复：允许在手机上自动换行，不再溢出 */
   .random-words-container { 
     display: flex; justify-content: center; align-items: center; 
-    flex-wrap: wrap; /* 允许换行 */
+    flex-wrap: wrap; 
     gap: 15px; width: 100%; 
     padding-bottom: 10px;
   }
@@ -341,7 +340,6 @@
   .script-toggle:hover { color: #555; }
   .script-container { display: none; flex-direction: column; align-items: center; width: 100%; margin-top: 30px; gap: 20px; }
   
-  /* 修复：话术卡片缩减边距，保证长文本完整显示 */
   .script-card {
     width: 95%; max-width: 550px; padding: 15px 20px; background: rgba(255, 255, 255, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.9); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);
@@ -420,7 +418,7 @@
 
     /* 详情页大容器收边 */
     .detail-content-box {
-      padding: 20px 15px; /* 减少手机端内边距 */
+      padding: 20px 15px;
       width: 100%;
     }
 
@@ -438,6 +436,16 @@
     .polaroid img { width: 120px; height: 120px; }
     .polaroid.left { left: 2%; }
     .polaroid.right { right: 2%; }
+
+    /* ★ 修复：手机端返回键精准贴紧右上角，防止遮挡 */
+    .close-btn {
+      top: 15px; 
+      right: 15px;
+      width: 38px;
+      height: 38px;
+      font-size: 20px;
+      background: rgba(255, 255, 255, 0.85);
+    }
   }
 </style>
 </head>
@@ -503,21 +511,21 @@
   <!-- Slide 1: 自我简介 -->
   <div class="slide" id="page-1">
     <div class="polaroid left" id="polaroid-1">
-      <img src="pai1.jpg" onerror="this.src='https://via.placeholder.com/180x180/f0f0f0/999?text=pai1.jpg'">
+      <img src="pai1.jpg" loading="lazy" decoding="async" onerror="this.src='https://via.placeholder.com/180x180/f0f0f0/999?text=pai1.jpg'">
     </div>
   </div>
 
   <!-- Slide 2: 风格与话术 -->
   <div class="slide" id="page-2">
     <div class="polaroid right" id="polaroid-2">
-      <img src="pai2.jpg" onerror="this.src='https://via.placeholder.com/180x180/f0f0f0/999?text=pai2.jpg'">
+      <img src="pai2.jpg" loading="lazy" decoding="async" onerror="this.src='https://via.placeholder.com/180x180/f0f0f0/999?text=pai2.jpg'">
     </div>
   </div>
 
   <!-- Slide 3: 板评及卡类 -->
   <div class="slide" id="page-3">
     <div class="polaroid left" id="polaroid-3">
-      <img src="pai3.jpg" onerror="this.src='https://via.placeholder.com/180x180/f0f0f0/999?text=pai3.jpg'">
+      <img src="pai3.jpg" loading="lazy" decoding="async" onerror="this.src='https://via.placeholder.com/180x180/f0f0f0/999?text=pai3.jpg'">
     </div>
     
     <div id="end-section" style="display: none; flex-direction: column; align-items: center; opacity: 0; z-index: 100;">
@@ -725,7 +733,6 @@
         f.y = f.baseY + Math.sin(f.floatPhase) * f.floatAmp;
       }
       
-      // 电脑端 hover 检测，手机端常驻显示
       let isHover = false;
       if (!isMobile) {
         const dx = pointer.x - f.x;
@@ -733,7 +740,7 @@
         const hitR = Math.max(50, f.r * f.scale * 1.4);
         isHover = (dx * dx + dy * dy <= hitR * hitR);
       } else {
-        isHover = true; // 手机端强制设为 true 以显示 tooltip
+        isHover = true; 
       }
       
       if (isHover !== f.hover) {
@@ -741,7 +748,15 @@
         if (f.hover) {
           snowTooltip.textContent = f.tip;
           snowTooltip.style.left = f.x + 'px';
-          snowTooltip.style.top = (f.y - f.r * f.scale * 1.2) + 'px'; 
+          
+          // ★ 修复：电脑端在上方，手机端强制在下方显示，防止被手指挡住
+          if (isMobile) {
+            snowTooltip.style.top = (f.y + f.r * 1.2 * f.scale + 15) + 'px';
+            snowTooltip.style.transform = 'translate(-50%, 0) scale(1)'; // 重置手机端动画位置
+          } else {
+            snowTooltip.style.top = (f.y - f.r * f.scale * 1.2) + 'px'; 
+          }
+          
           snowTooltip.classList.add('show');
           if (!isMobile) document.body.style.cursor = 'pointer';
         } else {
@@ -957,7 +972,7 @@
   });
 
   const heroImageHTML = `
-    <img src="IMG_3454.jpg" alt="雪花特写" class="detail-hero-image" onerror="this.style.display='none'">
+    <img src="IMG_3454.jpg" alt="雪花特写" class="detail-hero-image" loading="lazy" decoding="async" onerror="this.style.display='none'">
   `;
 
   // --- 自我简介详情 ---
@@ -1080,7 +1095,7 @@
 
         <div style="height: 60px;"></div>
 
-        <img src="tu4.jpg" style="width: 100%; max-width: 500px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); margin: 20px 0;" onerror="this.src='https://via.placeholder.com/500x300/f0f0f0/999?text=tu4.jpg'">
+        <img src="tu4.jpg" style="width: 100%; max-width: 500px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); margin: 20px 0;" loading="lazy" decoding="async" onerror="this.src='https://via.placeholder.com/500x300/f0f0f0/999?text=tu4.jpg'">
 
         <div style="height: 60px;"></div>
 
@@ -1155,7 +1170,7 @@
             <img src="xuzhi.jpg" id="fog-cover-img" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 12px; cursor: crosshair; z-index: 10; 
                  -webkit-mask-image: radial-gradient(circle at center, transparent 0px, black 0px); 
                  mask-image: radial-gradient(circle at center, transparent 0px, black 0px);" 
-                 onerror="this.style.opacity='0'; this.style.pointerEvents='none';">
+                 loading="lazy" decoding="async" onerror="this.style.opacity='0'; this.style.pointerEvents='none';">
           </div>
         `;
         detailContent.style.opacity = 1;
@@ -1297,11 +1312,11 @@
       }
 
       if (subName === '病恋') {
-        layoutHTML = `<div class="split-layout"><div class="split-left"><div class="disease-cards" style="margin:0;">${cardsHTML}</div></div><div class="split-right"><img src="tu1.jpg" class="detail-image-card" onerror="this.src='https://via.placeholder.com/400x300/f0f0f0/999?text=tu1.jpg'"></div></div>`;
+        layoutHTML = `<div class="split-layout"><div class="split-left"><div class="disease-cards" style="margin:0;">${cardsHTML}</div></div><div class="split-right"><img src="tu1.jpg" class="detail-image-card" loading="lazy" decoding="async" onerror="this.src='https://via.placeholder.com/400x300/f0f0f0/999?text=tu1.jpg'"></div></div>`;
       } else if (subName === '虚恋') {
-        layoutHTML = `<div class="split-layout"><div class="split-left"><img src="tu2.jpg" class="detail-image-card" onerror="this.src='https://via.placeholder.com/400x300/f0f0f0/999?text=tu2.jpg'"></div><div class="split-right"><div class="disease-cards" style="margin:0;">${cardsHTML}</div></div></div>`;
+        layoutHTML = `<div class="split-layout"><div class="split-left"><img src="tu2.jpg" class="detail-image-card" loading="lazy" decoding="async" onerror="this.src='https://via.placeholder.com/400x300/f0f0f0/999?text=tu2.jpg'"></div><div class="split-right"><div class="disease-cards" style="margin:0;">${cardsHTML}</div></div></div>`;
       } else if (subName === 'Dom') {
-        layoutHTML = `<div class="split-layout"><div class="split-left"><div class="disease-cards" style="margin:0;">${cardsHTML}</div></div><div class="split-right"><img src="tu3.jpg" class="detail-image-card" onerror="this.src='https://via.placeholder.com/400x300/f0f0f0/999?text=tu3.jpg'"></div></div>`;
+        layoutHTML = `<div class="split-layout"><div class="split-left"><div class="disease-cards" style="margin:0;">${cardsHTML}</div></div><div class="split-right"><img src="tu3.jpg" class="detail-image-card" loading="lazy" decoding="async" onerror="this.src='https://via.placeholder.com/400x300/f0f0f0/999?text=tu3.jpg'"></div></div>`;
       }
 
       detailContent.innerHTML = `
