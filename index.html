@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>你听 雪落下的声音</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden; /* 禁止页面整体滑动，防止手机端横向溢出 */
+    background: linear-gradient(180deg,
+      #78838f 0%, #8e99a5 18%, #aab3bd 36%,
+      #c9d0d8 54%, #e3e8ed 72%, #f6f8fa 88%, #ffffff 100%);
+    font-family: "Songti SC", "SimSun", "STSong", "Times New Roman", serif;
+  }
+  
+  /* ================= 梦幻极光与冰晶暗纹背景 ================= */
+  .bg-effects {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    overflow: hidden;
+  }
+  .bg-glow {
+    position: absolute; width: 80vw; height: 80vw;
+    background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(200,220,255,0.1) 40%, transparent 70%);
+    border-radius: 50%;
+    animation: floatGlow 15s ease-in-out infinite alternate;
+  }
+  .bg-glow.g1 { top: -20%; left: -10%; }
+  .bg-glow.g2 { bottom: -20%; right: -10%; animation-delay: -5s; background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(190,210,240,0.1) 40%, transparent 70%); }
+  
+  @keyframes floatGlow {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(5%, 5%) scale(1.1); }
+  }
+
+  .bg-corner {
+    position: absolute; width: 300px; height: 300px;
+    opacity: 0.15; pointer-events: none;
+    background-image: radial-gradient(circle at 10px 10px, #fff 1px, transparent 1px);
+    background-size: 20px 20px;
+    mask-image: radial-gradient(circle at top left, black, transparent 70%);
+    -webkit-mask-image: radial-gradient(circle at top left, black, transparent 70%);
+  }
+  .bg-corner.top-left { top: 0; left: 0; }
+  .bg-corner.top-right { top: 0; right: 0; transform: scaleX(-1); }
+  .bg-corner.bottom-left { bottom: 0; left: 0; transform: scaleY(-1); }
+  .bg-corner.bottom-right { bottom: 0; right: 0; transform: scale(-1); }
+
+  #snow { position: fixed; inset: 0; display: block; z-index: 1; pointer-events: none; }
+
+  /* ================= 音乐播放按钮 ================= */
+  .music-btn {
+    position: fixed; top: 30px; right: 90px;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    display: flex; justify-content: center; align-items: center;
+    cursor: pointer; z-index: 1000; transition: all 0.3s ease;
+  }
+  .music-btn:hover { background: #fff; transform: scale(1.1); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
+  .music-icon {
+    width: 16px; height: 16px; border-style: double;
+    border-width: 0px 0px 0px 12px;
+    border-color: transparent transparent transparent #444; transition: all 0.2s;
+  }
+  .music-btn.playing .music-icon { border-style: solid; border-width: 8px 0 8px 12px; }
+
+  /* ================= 悬浮提示 ================= */
+  .snow-tooltip {
+    position: fixed; top: 0; left: 0;
+    padding: 8px 20px;
+    background: rgba(40, 45, 55, 0.75); color: #fff;
+    font-size: 15px; letter-spacing: 3px; border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15), inset 0 0 10px rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px); white-space: nowrap;
+    pointer-events: none; z-index: 10; opacity: 0;
+    transform: translate(-50%, -100%) translateY(-15px) scale(0.95);
+    transition: opacity 0.5s cubic-bezier(0.25, 1, 0.5, 1), transform 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  .snow-tooltip.show { opacity: 1; transform: translate(-50%, -100%) translateY(-30px) scale(1); }
+
+  /* ================= 核心滑动容器 ================= */
+  #slider {
+    position: relative; z-index: 2;
+    width: 100%; height: 400vh; 
+    display: flex; flex-direction: column;
+    transition: transform 1.2s cubic-bezier(0.45, 0, 0.15, 1);
+  }
+
+  .slide {
+    width: 100%; height: 100vh;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    position: relative;
+  }
+
+  /* ================= 拍立得装饰 ================= */
+  .polaroid {
+    background: #fff;
+    padding: 18px 18px 75px 18px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+    position: absolute;
+    border-radius: 3px;
+    z-index: 5;
+    opacity: 0;
+    transform: translateY(-100vh) rotate(0deg);
+    transition: transform 2.5s cubic-bezier(0.25, 1, 0.3, 1), opacity 2.5s ease;
+  }
+  .polaroid img {
+    width: 180px; height: 180px; object-fit: cover; display: block; background: #eee;
+  }
+  .polaroid.left { top: 12%; left: 6%; --rot: -8deg; }
+  .polaroid.right { top: 12%; right: 6%; --rot: 8deg; }
+
+  .polaroid.show {
+    opacity: 1;
+    transform: translateY(0) rotate(var(--rot));
+  }
+
+  /* ================= 文案通用 ================= */
+  @keyframes fadeInUp {
+    0% { opacity: 0; transform: translateY(20px); filter: blur(4px); }
+    100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+  }
+  .text-normal { font-size: clamp(18px, 4vw, 36px); color: #1a1a1a; font-weight: 600; letter-spacing: 2px; white-space: nowrap; }
+  
+  /* 红色文字与光晕 */
+  .text-red {
+    font-size: clamp(36px, 8vw, 68px);
+    color: #9e2a2b; font-weight: bold;
+    margin: 0 12px; line-height: 1; position: relative; top: 4px;
+    letter-spacing: 4px; white-space: nowrap;
+    text-shadow: 0 0 15px rgba(158, 42, 43, 0.6), 0 0 5px rgba(255, 255, 255, 0.8);
+  }
+  .quote-mark { font-size: clamp(24px, 5vw, 45px); color: #1a1a1a; margin-right: 5px; }
+
+  /* 文字链接样式 (Yes/No) */
+  .text-link {
+    color: #9e2a2b;
+    font-size: 16px;
+    letter-spacing: 4px;
+    cursor: pointer;
+    border-bottom: 1px dashed rgba(158, 42, 43, 0.5);
+    padding-bottom: 4px;
+    transition: all 0.3s ease;
+  }
+  .text-link:hover {
+    color: #7a1f20;
+    border-color: #7a1f20;
+  }
+
+  /* ================= Slide 0: 光点与序章 ================= */
+  .spark-container {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none; 
+  }
+  
+  .falling-spark-wrapper {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 100px; height: 100%;
+    display: flex; flex-direction: column; align-items: center;
+    pointer-events: auto;
+  }
+
+  .falling-spark {
+    width: 14px; height: 14px;
+    background: #fff; border-radius: 50%;
+    box-shadow: 0 0 20px 6px rgba(255, 255, 255, 0.8), 0 0 40px 15px rgba(200, 230, 255, 0.4);
+    position: absolute; top: -10%; opacity: 0;
+    animation: dropSpark 3s cubic-bezier(0.4, 0, 0.2, 1) forwards, floatSpark 2.5s ease-in-out infinite alternate 3s;
+    cursor: pointer; z-index: 10;
+  }
+  @keyframes dropSpark {
+    0% { top: -10%; opacity: 0; }
+    100% { top: 60%; opacity: 1; } 
+  }
+  @keyframes floatSpark {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-15px); }
+  }
+
+  .spark-hint {
+    position: absolute; top: calc(60% - 60px);
+    font-size: 18px; color: #333; letter-spacing: 2px;
+    white-space: nowrap;
+    opacity: 0; pointer-events: none; 
+    transform: translateY(10px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+    text-shadow: 0 2px 10px rgba(255,255,255,1);
+  }
+  
+  .spark-options {
+    position: absolute; top: calc(60% + 60px);
+    display: flex; gap: 40px;
+    opacity: 0; pointer-events: none; 
+    transform: translateY(10px);
+    transition: opacity 0.8s ease 0.4s, transform 0.8s ease 0.4s;
+  }
+
+  .spark-wrapper.ready:hover .spark-hint,
+  .spark-wrapper.ready.show .spark-hint {
+    opacity: 1; transform: translateY(0);
+  }
+  .spark-wrapper.ready:hover .spark-options,
+  .spark-wrapper.ready.show .spark-options {
+    opacity: 1; pointer-events: auto; transform: translateY(0);
+  }
+
+  .float-btn { animation: floatUpDown 2s ease-in-out infinite alternate; }
+  .float-btn:nth-child(2) { animation-delay: -1s; }
+  @keyframes floatUpDown {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-8px); }
+  }
+
+  .spark-btn {
+    padding: 8px 24px; border: 1px solid rgba(30,30,30,0.2); border-radius: 20px;
+    background: rgba(255,255,255,0.6); color: #333;
+    font-size: 16px; letter-spacing: 2px; cursor: pointer;
+    transition: all 0.3s ease; font-family: inherit;
+  }
+  .spark-btn:hover { background: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+  
+  .btn-no { transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+  /* ================= 居中排布的 Continue 按键 ================= */
+  .continue-btn {
+    font-size: 16px; color: #666; letter-spacing: 4px;
+    cursor: pointer; border-bottom: 1px dashed rgba(0,0,0,0.2);
+    padding-bottom: 4px; transition: all 0.3s ease;
+    display: block; margin: 50px auto 0 auto; text-align: center;
+    width: max-content; 
+  }
+  .continue-btn:hover { color: #9e2a2b; border-color: #9e2a2b; }
+
+  /* ================= 详情页覆盖层 ================= */
+  .detail-overlay {
+    position: fixed; inset: 0;
+    background: rgba(245, 248, 250, 0.88); backdrop-filter: blur(18px);
+    z-index: 100; display: flex; justify-content: center; align-items: center;
+    opacity: 0; pointer-events: none; overflow: hidden;
+    transition: opacity 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .detail-overlay.active { opacity: 1; pointer-events: auto; }
+  
+  .detail-content-box {
+    position: relative; width: 90%; max-width: 800px;
+    max-height: 90vh; overflow-y: auto; overflow-x: hidden; /* 防止横向溢出 */
+    padding: 40px;
+    display: flex; flex-direction: column; align-items: center;
+    transform: translateY(20px); z-index: 2;
+    transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+    scrollbar-width: none;
+  }
+  .detail-content-box::-webkit-scrollbar { display: none; }
+  .detail-overlay.active .detail-content-box { transform: translateY(0); }
+
+  .close-btn {
+    position: fixed; top: 30px; right: 30px;
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-radius: 50%; width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; color: #444;
+    cursor: pointer; transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    z-index: 1000; backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  .close-btn:hover { color: #9e2a2b; background: #fff; transform: scale(1.1); }
+
+  .detail-hero-image {
+    display: block; margin: 20px auto 40px auto;
+    width: 100%; max-width: 550px; height: auto;
+    border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    object-fit: cover; opacity: 0.9; mix-blend-mode: multiply;
+    transition: transform 0.5s ease;
+  }
+
+  .card-boxes { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 30px; margin-bottom: 30px; }
+  .box {
+    border: 1px solid rgba(30, 30, 30, 0.15); padding: 12px 32px; font-size: 24px; color: #1a1a1a;
+    background: rgba(255, 255, 255, 0.6); border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); letter-spacing: 2px;
+  }
+  .box-subtitle { text-align: center; font-size: 15px; color: #555; line-height: 2; margin-bottom: 50px; letter-spacing: 1px; }
+  .extra-info { text-align: center; font-size: 16px; color: #333; line-height: 2.2; width: 100%; max-width: 800px; margin: 0 auto; padding-top: 25px; border-top: 1px dashed rgba(0,0,0,0.1); letter-spacing: 1px; }
+
+  /* 分支选项 */
+  .sub-options { display: flex; flex-direction: column; align-items: center; gap: 18px; margin-top: 30px; margin-bottom: 30px; width: 100%; }
+  .sub-card {
+    padding: 14px 34px; font-size: 20px; color: #1a1a1a; background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(30, 30, 30, 0.15); border-radius: 8px; cursor: pointer; letter-spacing: 2px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: all 0.3s ease;
+    opacity: 0; transform: translateX(var(--x-offset, 0px)) translateY(20px) scale(0.95);
+    animation: subCardIn 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+  .sub-card:hover { background: #fff; box-shadow: 0 6px 20px rgba(0,0,0,0.08); color: #9e2a2b; transform: translateX(var(--x-offset, 0px)) scale(1.05) translateY(0) !important; }
+  @keyframes subCardIn { 0% { opacity: 0; transform: translateX(var(--x-offset, 0px)) translateY(20px) scale(0.95); } 100% { opacity: 1; transform: translateX(var(--x-offset, 0px)) translateY(0) scale(1); } }
+
+  /* 详情通用 */
+  .disease-header { text-align: center; margin-bottom: 40px; width: 100%; animation: fadeInUp 1.2s ease forwards; opacity: 0; }
+  .disease-title { font-size: 40px; color: #1a1a1a; font-weight: bold; letter-spacing: 4px; }
+  .disease-subtitle { font-size: 16px; color: #888; font-style: italic; letter-spacing: 2px; margin-top: 10px; }
+
+  .disease-cards { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%; margin: 0 auto 40px auto; }
+  .disease-card {
+    display: flex; align-items: center; justify-content: center; padding: 14px 30px; min-width: 160px; 
+    font-size: 20px; color: #1a1a1a; background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02); letter-spacing: 2px; white-space: nowrap;
+    opacity: 0; transform: translateX(var(--x-offset, 0px)) translateY(12px) scale(0.96);
+    filter: blur(4px); animation: gentleGlowIn 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+  .snow-icon-svg { width: 22px; height: 22px; margin-right: 10px; color: #b0c4d6; filter: drop-shadow(0 0 4px rgba(200, 220, 255, 0.8)); }
+  @keyframes gentleGlowIn { 0% { opacity: 0; transform: translateX(var(--x-offset, 0px)) translateY(12px) scale(0.96); filter: blur(4px); } 100% { opacity: 1; transform: translateX(var(--x-offset, 0px)) translateY(0) scale(1); filter: blur(0); } }
+
+  .split-layout { display: flex; justify-content: center; align-items: center; gap: 40px; width: 100%; max-width: 850px; margin: 0 auto 40px auto; flex-wrap: wrap; }
+  .split-left, .split-right { flex: 1; min-width: 280px; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+  .detail-image-card { width: 100%; max-width: 400px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); background: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.8); opacity: 0; transform: translateY(15px) scale(0.98); animation: gentleGlowIn 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; animation-delay: 1.5s; }
+
+  /* 文字延迟加快 */
+  .random-element-title { font-size: 18px; color: #9e2a2b; font-weight: bold; text-align: center; margin-bottom: 20px; letter-spacing: 2px; opacity: 0; animation: fadeInUp 1.2s ease 1.5s forwards; width: 100%; }
+  
+  /* 修复：允许在手机上自动换行，不再溢出 */
+  .random-words-container { 
+    display: flex; justify-content: center; align-items: center; 
+    flex-wrap: wrap; /* 允许换行 */
+    gap: 15px; width: 100%; 
+    padding-bottom: 10px;
+  }
+  
+  .r-word { font-size: 18px; color: #9e2a2b; font-weight: bold; letter-spacing: 1px; opacity: 0; white-space: nowrap; animation: wordFloat 3s ease-in-out infinite alternate; }
+  @keyframes wordAppear { 0% { opacity: 0; transform: translateY(15px) scale(0.95); filter: blur(2px); } 100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } }
+  @keyframes wordFloat { 0% { transform: translateY(0); } 100% { transform: translateY(-6px); } }
+  .dots { font-size: 24px; color: #9e2a2b; font-weight: bold; letter-spacing: 8px; width: 100%; text-align: center; margin-top: 25px; opacity: 0; animation: fadeInUp 1.2s ease 2.5s forwards; }
+  .footer-text { text-align: center; font-size: 16px; color: #9e2a2b; letter-spacing: 2px; margin-top: 40px; opacity: 0; animation: fadeInUp 1.2s ease 2.0s forwards; }
+
+  .script-toggle { margin-top: 30px; font-size: 16px; color: #888; letter-spacing: 2px; cursor: pointer; text-align: center; width: 100%; opacity: 0; animation: fadeInUp 1.2s ease 3.0s forwards; transition: color 0.3s; }
+  .script-toggle:hover { color: #555; }
+  .script-container { display: none; flex-direction: column; align-items: center; width: 100%; margin-top: 30px; gap: 20px; }
+  
+  /* 修复：话术卡片缩减边距，保证长文本完整显示 */
+  .script-card {
+    width: 95%; max-width: 550px; padding: 15px 20px; background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.9); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+    font-size: 15px; color: #333; line-height: 1.8; letter-spacing: 1px;
+    text-align: left !important; text-indent: 0; 
+    opacity: 0; transform: translateY(15px) scale(0.98); animation: gentleGlowIn 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+  
+  .placeholder-card {
+    width: 95%; max-width: 550px; padding: 18px; background: transparent; border: 1.5px dashed rgba(30, 30, 30, 0.15);
+    border-radius: 10px; display: flex; justify-content: center; align-items: center; color: #aaa; font-size: 15px; letter-spacing: 2px;
+    opacity: 0; transform: translateY(15px) scale(0.98); animation: gentleGlowIn 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+  .script-footer { margin-top: 30px; font-size: 13px; color: #888; letter-spacing: 1.5px; text-align: center; width: 100%; opacity: 0; animation: fadeInUp 1s ease forwards; }
+
+  /* ================= 须知文案排版 ================= */
+  .notice-wrapper {
+    width: 100%;
+    max-width: 800px; 
+    margin: 0 auto;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    position: relative;
+    overflow: hidden;
+    background: rgba(255,255,255,0.4);
+  }
+  .notice-content {
+    padding: 20px;
+  }
+  
+  .notice-list {
+    list-style: none; padding: 0; margin: 0; text-align: left;
+  }
+  .notice-list li {
+    white-space: normal; 
+    font-size: clamp(14px, 1.8vw, 16px); 
+    letter-spacing: 1px;
+    margin-bottom: 22px;
+    position: relative; padding-left: 20px;
+    color: #333;
+    line-height: 1.6;
+    opacity: 0;
+    animation: fadeInUp 2s ease 1.5s forwards;
+  }
+  .notice-list li span {
+    color:#333; font-size: 1.2em; margin-right:6px;
+  }
+  
+  /* 板评排版 */
+  .board-more-wrap { display: flex; justify-content: center; margin: 40px 0; }
+  .board-more-btn {
+    display: inline-block; padding: 12px 30px; font-size: 16px; color: #9e2a2b; text-decoration: none;
+    border: 1px dashed rgba(158, 42, 43, 0.4); border-radius: 20px; letter-spacing: 2px; transition: all 0.3s ease;
+  }
+
+  /* ================= 原地替换覆盖层 ================= */
+  .ending-overlay {
+    position: fixed; inset: 0; z-index: 500;
+    background: linear-gradient(180deg,
+      #78838f 0%, #8e99a5 18%, #aab3bd 36%,
+      #c9d0d8 54%, #e3e8ed 72%, #f6f8fa 88%, #ffffff 100%);
+    display: flex; justify-content: center; align-items: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 2s ease; 
+  }
+  .ending-overlay.active {
+    opacity: 1; pointer-events: auto;
+  }
+
+  /* ================= 手机端专属适配 ================= */
+  @media (max-width: 600px) {
+    /* 主页面标题排版 */
+    .line-1, .line-2 { margin-left: 0; justify-content: center; }
+    .content-layer { top: 10% !important; }
+    .text-red { margin: 0 5px; }
+
+    /* 详情页大容器收边 */
+    .detail-content-box {
+      padding: 20px 15px; /* 减少手机端内边距 */
+      width: 100%;
+    }
+
+    /* 图片间距调整 */
+    .detail-hero-image { margin: 10px auto 20px auto; }
+    .split-layout { flex-direction: column; gap: 20px; }
+    .split-left, .split-right { min-width: 100%; }
+
+    /* 须知页排版 */
+    .notice-wrapper { width: 100%; }
+    .notice-content { padding: 15px; }
+
+    /* 拍立得尺寸 */
+    .polaroid { padding: 12px 12px 50px 12px; }
+    .polaroid img { width: 120px; height: 120px; }
+    .polaroid.left { left: 2%; }
+    .polaroid.right { right: 2%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 背景音乐与按钮 -->
+<audio id="bgm" loop autoplay>
+  <source src="https://cdn.jsdelivr.net/gh/2607810180-cell/liu@main/bgm.mp3" type="audio/mpeg">
+</audio>
+<div id="music-btn" class="music-btn">
+  <div class="music-icon"></div>
+</div>
+
+<!-- 背景装饰层 -->
+<div class="bg-effects">
+  <div class="bg-glow g1"></div>
+  <div class="bg-glow g2"></div>
+  <div class="bg-corner top-left"></div>
+  <div class="bg-corner top-right"></div>
+  <div class="bg-corner bottom-left"></div>
+  <div class="bg-corner bottom-right"></div>
+</div>
+
+<!-- 全局雪花画布 -->
+<canvas id="snow"></canvas>
+
+<!-- 悬浮提示 -->
+<div class="snow-tooltip" id="snow-tooltip"></div>
+
+<!-- 核心滑动容器 -->
+<div id="slider">
+
+  <!-- Slide 0: 主页面 -->
+  <div class="slide" id="page-0">
+    <div class="content-layer" style="pointer-events: none; position: absolute; top: 15%; width: 100%; display: flex; justify-content: center;">
+      <div style="max-width: 800px; width: 100%; text-align: center;">
+        <div class="line-1" style="display: flex; align-items: baseline; justify-content: center; animation: fadeInUp 1.8s 0.5s forwards; opacity: 0; flex-wrap: nowrap;">
+          <span class="quote-mark">「</span>
+          <span class="text-normal">雪落埋藏</span>
+          <span class="text-red">枯骨</span>
+        </div>
+        <div class="line-2" style="display: flex; align-items: baseline; justify-content: center; margin-top: 15px; animation: fadeInUp 1.8s 1s forwards; opacity: 0; flex-wrap: nowrap;">
+          <span class="text-normal">沉寂的</span>
+          <span class="text-red">爱意</span>
+          <span class="text-normal">是否还会苏醒</span>
+          <span class="quote-mark">」</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="spark-container" id="spark-container">
+      <div class="falling-spark-wrapper spark-wrapper">
+        <div class="falling-spark" id="falling-spark"></div>
+        <div class="spark-hint">要开启故事的序章么</div>
+        <div class="spark-options">
+          <div class="float-btn"><button class="spark-btn btn-yes" id="btn-yes">Yes</button></div>
+          <div class="float-btn"><button class="spark-btn btn-no" id="btn-no">No</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 1: 自我简介 -->
+  <div class="slide" id="page-1">
+    <div class="polaroid left" id="polaroid-1">
+      <img src="pai1.jpg" onerror="this.src='https://via.placeholder.com/180x180/f0f0f0/999?text=pai1.jpg'">
+    </div>
+  </div>
+
+  <!-- Slide 2: 风格与话术 -->
+  <div class="slide" id="page-2">
+    <div class="polaroid right" id="polaroid-2">
+      <img src="pai2.jpg" onerror="this.src='https://via.placeholder.com/180x180/f0f0f0/999?text=pai2.jpg'">
+    </div>
+  </div>
+
+  <!-- Slide 3: 板评及卡类 -->
+  <div class="slide" id="page-3">
+    <div class="polaroid left" id="polaroid-3">
+      <img src="pai3.jpg" onerror="this.src='https://via.placeholder.com/180x180/f0f0f0/999?text=pai3.jpg'">
+    </div>
+    
+    <div id="end-section" style="display: none; flex-direction: column; align-items: center; opacity: 0; z-index: 100;">
+      <div style="text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #333; margin-bottom: 20px;">End</div>
+      <div style="font-size: 16px; color: #9e2a2b; letter-spacing: 4px; margin-bottom: 30px;">要回到最开始的时候么</div>
+      
+      <div style="display: flex; gap: 40px; opacity: 0; animation: fadeInUp 1.5s ease 2s forwards;">
+        <div class="text-link" onclick="clickEndYes()">Yes</div>
+        <div class="text-link" onclick="clickEndNo()">No</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 独立终结层 -->
+<div class="ending-overlay" id="ending-layer">
+  <div id="ending-no" style="display: none; flex-direction: column; align-items: center; opacity: 0; transition: opacity 4s ease;">
+    <div class="text-normal" style="font-size: clamp(24px, 4vw, 36px); letter-spacing: 4px; color: #1a1a1a;">
+      「那就在这里 说再见吧」
+    </div>
+  </div>
+
+  <div id="ending-yes" style="display: none; flex-direction: column; align-items: center; opacity: 0; transition: opacity 4s ease;">
+    <div style="display: flex; align-items: baseline;">
+      <span class="quote-mark">「</span>
+      <span class="text-normal" style="font-size: clamp(20px, 3vw, 28px); letter-spacing: 2px;">落下的</span>
+      <span class="text-red" style="font-size: clamp(30px, 5vw, 45px);">雪花</span>
+      <span class="text-normal" style="font-size: clamp(20px, 3vw, 28px); letter-spacing: 2px;">不会再飘回云层</span>
+    </div>
+    <div style="display: flex; align-items: baseline; margin-top: 15px;">
+      <span class="text-normal" style="font-size: clamp(20px, 3vw, 28px); letter-spacing: 2px; margin-left: 40px;">人们也回不去</span>
+      <span class="text-red" style="font-size: clamp(30px, 5vw, 45px);">过去</span>
+      <span class="quote-mark">」</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- 详情页覆盖层 -->
+<div class="detail-overlay" id="detail-overlay">
+  <button class="close-btn" id="close-btn" title="返回">←</button>
+  <div class="detail-content-box">
+    <div id="detail-dynamic-content"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // 检测是否为移动端
+  const isMobile = /iPhone|iPad|iPod|Android|Windows Phone/i.test(navigator.userAgent);
+
+  /* ==================== 基础环境 ==================== */
+  const canvas = document.getElementById('snow');
+  const ctx = canvas.getContext('2d');
+  let W = 0, H = 0;
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+  function resizeCanvas() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width  = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+
+  const rand = (min, max) => min + Math.random() * (max - min);
+
+  /* ==================== 背景雪尘 ==================== */
+  const dust = [];
+  for (let i = 0; i < 60; i++) { 
+    dust.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: rand(0.4, 1.5), vx: rand(-6, 6), vy: rand(6, 22),
+      alpha: rand(0.15, 0.4), phase: rand(0, Math.PI * 2), freq: rand(0.3, 1)
+    });
+  }
+
+  /* ==================== 雪花路径 ==================== */
+  function makeFlakePath(r) {
+    const path = new Path2D();
+    const branches = [[0.38, 0.30], [0.62, 0.24], [0.84, 0.16]];
+    for (let i = 0; i < 6; i++) {
+      const a  = i * Math.PI / 3;
+      const ux = Math.sin(a), uy = -Math.cos(a);
+      const vx = Math.cos(a), vy =  Math.sin(a);
+      path.moveTo(0, 0); path.lineTo(ux * r, uy * r);
+      for (const [pos, len] of branches) {
+        const bx = ux * r * pos, by = uy * r * pos, l = len * r;
+        path.moveTo(bx, by);
+        path.lineTo(bx + vx * l + ux * l * 0.8, by + vy * l + uy * l * 0.8);
+        path.moveTo(bx, by);
+        path.lineTo(bx - vx * l + ux * l * 0.8, by - vy * l + uy * l * 0.8);
+      }
+    }
+    return path;
+  }
+
+  const normalSmallFlakes = [];
+  const normalBigFlakes = [];
+
+  function createNormalFlakes() {
+    normalSmallFlakes.length = 0;
+    for (let i = 0; i < 30; i++) { 
+      normalSmallFlakes.push({
+        x: rand(0, W), y: rand(-H, 0),
+        r: rand(1.5, 3.5),
+        vy: rand(15, 30), swayAmp: rand(5, 15), swaySpeed: rand(0.5, 1),
+        swayPhase: rand(0, Math.PI * 2), alpha: rand(0.4, 0.8)
+      });
+    }
+    normalBigFlakes.length = 0;
+    for (let i = 0; i < 8; i++) { 
+      const r = rand(20, 35);
+      normalBigFlakes.push({
+        x: rand(100, W - 100), y: rand(-H, 0),
+        r: r, path: makeFlakePath(r),
+        vy: rand(10, 20), swayAmp: rand(10, 20), swaySpeed: rand(0.3, 0.6),
+        swayPhase: rand(0, Math.PI * 2), rot: rand(0, Math.PI * 2), rotSpeed: rand(-0.2, 0.2),
+        alpha: rand(0.4, 0.7)
+      });
+    }
+  }
+
+  let activeFlake = null;
+  let currentSlideIndex = 0;
+  const snowTooltip = document.getElementById('snow-tooltip');
+
+  function updateInteractiveFlake() {
+    if (document.getElementById('end-section').style.display === 'flex' || document.getElementById('ending-layer').classList.contains('active')) {
+      activeFlake = null;
+      return;
+    }
+
+    if (currentSlideIndex === 1) {
+      activeFlake = { id: 'intro', label: '自我简介', tip: '看见 我的踪迹', x: W/2, baseY: H*0.65, y: -100, startY: -100, dropProgress: 0, isDropped: false, r: 45, path: makeFlakePath(45), rot: 0, rotSpeed: 0.05, opacity: 0, scale: 1, hover: false, pulse: 0, glow: 0, floatPhase: rand(0, Math.PI*2), floatAmp: 20 };
+    } else if (currentSlideIndex === 2) {
+      activeFlake = { id: 'style', label: '风格与话术', tip: '了解 我的思绪', x: W/2, baseY: H*0.65, y: -100, startY: -100, dropProgress: 0, isDropped: false, r: 45, path: makeFlakePath(45), rot: 0, rotSpeed: 0.05, opacity: 0, scale: 1, hover: false, pulse: 0, glow: 0, floatPhase: rand(0, Math.PI*2), floatAmp: 20 };
+    } else if (currentSlideIndex === 3) {
+      activeFlake = { id: 'board', label: '板评及卡类', tip: '见证 我的过往', x: W/2, baseY: H*0.65, y: -100, startY: -100, dropProgress: 0, isDropped: false, r: 45, path: makeFlakePath(45), rot: 0, rotSpeed: 0.05, opacity: 0, scale: 1, hover: false, pulse: 0, glow: 0, floatPhase: rand(0, Math.PI*2), floatAmp: 20 };
+    } else {
+      activeFlake = null;
+      snowTooltip.classList.remove('show');
+    }
+  }
+
+  /* ==================== 渲染循环 ==================== */
+  let last = performance.now();
+  const pointer = { x: -9999, y: -9999 };
+  let isDetailOpen = false;
+
+  function update(dt) {
+    const s = dt / 1000;
+    
+    for (const d of dust) {
+      d.phase += d.freq * s;
+      d.x += (d.vx + Math.sin(d.phase) * 4) * s;
+      d.y += d.vy * s;
+      if (d.y > H + 5) { d.y = -5; d.x = Math.random() * W; }
+      if (d.x < -5) d.x = W + 5;
+      if (d.x > W + 5) d.x = -5;
+    }
+
+    for (const f of normalSmallFlakes) {
+      f.swayPhase += f.swaySpeed * s;
+      f.x += Math.sin(f.swayPhase) * f.swayAmp * s;
+      f.y += f.vy * s;
+      if (f.y > H + 10) { f.y = -10; f.x = Math.random() * W; }
+    }
+
+    for (const f of normalBigFlakes) {
+      f.swayPhase += f.swaySpeed * s;
+      f.x += Math.sin(f.swayPhase) * f.swayAmp * s;
+      f.y += f.vy * s;
+      f.rot += f.rotSpeed * s;
+      if (f.y - f.r * 2 > H + 40) {
+        f.y = -f.r * 2;
+        f.x = rand(f.r * 2, W - f.r * 2);
+      }
+    }
+
+    if (activeFlake && !isDetailOpen) {
+      const f = activeFlake;
+      f.pulse += s * 2;
+      f.opacity += (1 - f.opacity) * Math.min(1, s * 4);
+      f.rot += f.rotSpeed * s;
+      
+      if (!f.isDropped) {
+        f.dropProgress += s / 1.2; 
+        if (f.dropProgress >= 1) {
+          f.dropProgress = 1;
+          f.isDropped = true;
+          f.y = f.baseY;
+        } else {
+          const ease = 1 - Math.pow(1 - f.dropProgress, 3);
+          f.y = f.startY + (f.baseY - f.startY) * ease;
+        }
+      } else {
+        f.floatPhase += s * 1.5;
+        f.y = f.baseY + Math.sin(f.floatPhase) * f.floatAmp;
+      }
+      
+      // 电脑端 hover 检测，手机端常驻显示
+      let isHover = false;
+      if (!isMobile) {
+        const dx = pointer.x - f.x;
+        const dy = pointer.y - f.y;
+        const hitR = Math.max(50, f.r * f.scale * 1.4);
+        isHover = (dx * dx + dy * dy <= hitR * hitR);
+      } else {
+        isHover = true; // 手机端强制设为 true 以显示 tooltip
+      }
+      
+      if (isHover !== f.hover) {
+        f.hover = isHover;
+        if (f.hover) {
+          snowTooltip.textContent = f.tip;
+          snowTooltip.style.left = f.x + 'px';
+          snowTooltip.style.top = (f.y - f.r * f.scale * 1.2) + 'px'; 
+          snowTooltip.classList.add('show');
+          if (!isMobile) document.body.style.cursor = 'pointer';
+        } else {
+          snowTooltip.classList.remove('show');
+          if (!isMobile) document.body.style.cursor = 'default';
+        }
+      }
+
+      const targetScale = f.hover && !isMobile ? 1.15 : 1;
+      const k = Math.min(1, s * 10);
+      f.scale += (targetScale - f.scale) * k;
+      f.glow += ((f.hover && !isMobile ? 1 : 0) - f.glow) * k;
+    } else {
+      if (!isMobile) document.body.style.cursor = 'default';
+      snowTooltip.classList.remove('show');
+    }
+  }
+
+  function drawSmallFlake(f) {
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(230, 242, 255, ${f.alpha})`;
+    ctx.shadowColor = 'rgba(150, 180, 210, 0.4)';
+    ctx.shadowBlur = 6;
+    ctx.fill();
+    ctx.shadowBlur = 0; 
+  }
+
+  function drawBigFlake(f, isInteractive) {
+    if (isInteractive && f.opacity === 0) return;
+
+    const r = f.r * (f.scale || 1);
+    
+    if (isInteractive) {
+      const pulseScale = 1 + Math.sin(f.pulse) * 0.1;
+      const glowR = r * 2.8 * pulseScale;
+      const glowGrad = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, glowR);
+      const baseAlpha = (0.25 + Math.sin(f.pulse) * 0.08 + f.glow * 0.35) * f.opacity;
+      
+      glowGrad.addColorStop(0, `rgba(255, 255, 255, ${baseAlpha})`);
+      glowGrad.addColorStop(0.3, `rgba(215, 235, 255, ${baseAlpha * 0.6})`);
+      glowGrad.addColorStop(0.7, `rgba(200, 225, 255, ${baseAlpha * 0.2})`);
+      glowGrad.addColorStop(1, 'rgba(200, 225, 255, 0)');
+      
+      ctx.fillStyle = glowGrad;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, glowR, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, r * 1.6, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255, 255, 255, ${(0.2 + f.glow * 0.4) * f.opacity})`;
+      ctx.lineWidth = 2 + f.glow * 2;
+      ctx.setLineDash([4, 8]);
+      ctx.stroke();
+      ctx.setLineDash([]); 
+    }
+
+    ctx.save();
+    ctx.translate(f.x, f.y);
+    ctx.rotate(f.rot);
+    ctx.scale(f.scale || 1, f.scale || 1);
+    
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(1.5, r * 0.07);
+    
+    const finalAlpha = isInteractive 
+      ? Math.min(1, f.alpha + f.glow * 0.5) * f.opacity
+      : f.alpha;
+
+    ctx.strokeStyle = isInteractive 
+      ? `rgba(255, 255, 255, ${finalAlpha})` 
+      : `rgba(235, 245, 255, ${finalAlpha})`;
+      
+    ctx.shadowColor = isInteractive ? 'rgba(200, 230, 255, 0.9)' : 'rgba(100, 130, 160, 0.5)';
+    ctx.shadowBlur = isInteractive ? (10 + f.glow * 20) : 8;
+
+    ctx.stroke(f.path);
+    
+    ctx.beginPath();
+    ctx.arc(0, 0, Math.max(2, r * 0.08), 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 255, 255, ${finalAlpha + 0.1})`;
+    ctx.fill();
+    
+    ctx.restore();
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, W, H);
+
+    for (const d of dust) {
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${d.alpha})`;
+      ctx.fill();
+    }
+
+    for (const f of normalSmallFlakes) drawSmallFlake(f);
+    for (const f of normalBigFlakes) drawBigFlake(f, false);
+    if (activeFlake) drawBigFlake(activeFlake, true);
+  }
+
+  function loop(now) {
+    const dt = Math.min(now - last, 50);
+    last = now;
+    update(dt);
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  resizeCanvas();
+  createNormalFlakes();
+  requestAnimationFrame(loop);
+  window.addEventListener('resize', () => {
+    resizeCanvas();
+    createNormalFlakes();
+    updateInteractiveFlake();
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    pointer.x = e.clientX;
+    pointer.y = e.clientY;
+  });
+
+  window.addEventListener('pointerdown', (e) => {
+    if (isDetailOpen || !activeFlake) return;
+    const dx = e.clientX - activeFlake.x;
+    const dy = e.clientY - activeFlake.y;
+    const hitR = Math.max(60, activeFlake.r * activeFlake.scale * 1.4); 
+    if (dx * dx + dy * dy <= hitR * hitR) {
+      if (activeFlake.id === 'intro') openDetail('intro');
+      if (activeFlake.id === 'style') openStyleOverlay();
+      if (activeFlake.id === 'board') openBoardOverlay();
+    }
+  });
+
+  /* ==================== 平滑翻页控制与防滑 ==================== */
+  const slider = document.getElementById('slider');
+  window.goToSlide = function(index) {
+    currentSlideIndex = index;
+    slider.style.transform = `translateY(-${index * 100}vh)`;
+    updateInteractiveFlake();
+    
+    document.getElementById('polaroid-1').classList.remove('show');
+    document.getElementById('polaroid-2').classList.remove('show');
+    document.getElementById('polaroid-3').classList.remove('show');
+    
+    if (index === 1) setTimeout(() => document.getElementById('polaroid-1').classList.add('show'), 300);
+    if (index === 2) setTimeout(() => document.getElementById('polaroid-2').classList.add('show'), 300);
+    if (index === 3) setTimeout(() => document.getElementById('polaroid-3').classList.add('show'), 300);
+  };
+
+  window.addEventListener('wheel', (e) => {
+    const endSec = document.getElementById('end-section');
+    const endingLayer = document.getElementById('ending-layer');
+    if (endSec.style.display === 'flex' || endingLayer.classList.contains('active')) {
+      e.preventDefault(); 
+    }
+  }, { passive: false });
+
+  window.addEventListener('touchmove', (e) => {
+    const endSec = document.getElementById('end-section');
+    const endingLayer = document.getElementById('ending-layer');
+    if (endSec.style.display === 'flex' || endingLayer.classList.contains('active')) {
+      e.preventDefault(); 
+    }
+  }, { passive: false });
+
+  /* ==================== Slide 0: 光点与选项 ==================== */
+  const btnNo = document.getElementById('btn-no');
+  const btnYes = document.getElementById('btn-yes');
+  
+  let noOffsetX = 0;
+
+  const moveNoBtn = (e) => {
+    if (e) e.preventDefault(); 
+    const dir = noOffsetX >= 0 ? -1 : 1; 
+    noOffsetX = dir * rand(50, 100); 
+    const noOffsetY = rand(-30, 30); 
+    btnNo.style.transform = `translate(${noOffsetX}px, ${noOffsetY}px)`;
+  };
+
+  btnNo.addEventListener('mouseenter', moveNoBtn);
+  btnNo.addEventListener('pointerdown', moveNoBtn); 
+  btnNo.addEventListener('touchstart', moveNoBtn, {passive: false});
+
+  btnYes.addEventListener('click', () => {
+    goToSlide(1);
+  });
+
+  setTimeout(() => {
+    document.querySelector('.spark-wrapper').classList.add('ready');
+    if (isMobile) {
+      document.querySelector('.spark-wrapper').classList.add('show');
+    }
+  }, 3000);
+
+  /* ==================== 交互详情控制 ==================== */
+  const detailOverlay = document.getElementById('detail-overlay');
+  const detailContent = document.getElementById('detail-dynamic-content');
+  const closeBtn = document.getElementById('close-btn');
+  const detailContentBox = document.querySelector('.detail-content-box'); 
+  
+  let currentLevel = 'main';
+  let currentParentId = '';
+  let hasVisitedSub = false; 
+
+  closeBtn.addEventListener('click', () => {
+    if (currentLevel === 'sub') {
+      openStyleOverlay(); 
+    }
+  });
+
+  const heroImageHTML = `
+    <img src="IMG_3454.jpg" alt="雪花特写" class="detail-hero-image" onerror="this.style.display='none'">
+  `;
+
+  // --- 自我简介详情 ---
+  window.openDetail = function(id) {
+    isDetailOpen = true;
+    detailOverlay.classList.add('active');
+    currentLevel = 'main';
+    currentParentId = id;
+    detailContent.style.opacity = 0;
+    
+    if (id === 'intro') {
+      closeBtn.style.display = 'none'; 
+      setTimeout(() => {
+        detailContent.innerHTML = `
+          ${heroImageHTML}
+          <div class="disease-cards" style="max-width: 300px; margin-bottom: 20px;">
+            <div class="disease-card" style="--x-offset: -20px; animation-delay: 0.2s; min-width: 140px;">许厌</div>
+            <div class="disease-card" style="--x-offset: 30px; animation-delay: 0.4s; min-width: 140px;">21岁</div>
+            <div class="disease-card" style="--x-offset: -15px; animation-delay: 0.6s; min-width: 140px;">le</div>
+            <div class="disease-card" style="--x-offset: 20px; animation-delay: 0.8s; min-width: 140px;">摩羯座</div>
+            <div class="disease-card" style="--x-offset: -5px; animation-delay: 1.0s; min-width: 140px;">intj</div>
+          </div>
+          <div style="width: 100%; display: flex; flex-direction: column; align-items: center; animation: fadeInUp 1s ease 1.2s forwards; opacity: 0;">
+            <div class="box-subtitle" style="width: 100%; text-align: center; margin-bottom: 20px; font-size: 16px; color: #555; line-height: 2;">
+              普适定义无法完整诠释个体<br>
+              请用更多时间来了解我吧
+            </div>
+            <div class="extra-info" style="width: 100%; max-width: 800px; margin: 0 auto; border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 20px; text-align: center; font-size: clamp(12px, 2vw, 16px); color: #333; line-height: 2;">
+              常驻建模：-0.4枯角初始/1.9耳坠初始<br>
+              无对象无暧昧无心选无特殊关系
+            </div>
+          </div>
+          <div class="continue-btn" id="intro-continue" onclick="closeIntroAndNext()" style="opacity: 0; animation: none;">Continue ↓</div>
+        `;
+        detailContent.style.opacity = 1;
+        detailContentBox.scrollTop = 0;
+        
+        setTimeout(() => {
+          const btn = document.getElementById('intro-continue');
+          if (btn) btn.style.animation = 'fadeInUp 1s ease forwards';
+        }, 1200);
+      }, 300);
+    }
+  };
+
+  window.closeIntroAndNext = function() {
+    detailOverlay.classList.remove('active');
+    isDetailOpen = false;
+    setTimeout(() => { goToSlide(2); }, 500);
+  };
+
+  // --- 风格与话术选项 ---
+  window.openStyleOverlay = function() {
+    isDetailOpen = true;
+    detailOverlay.classList.add('active');
+    closeBtn.style.display = 'none'; 
+    currentLevel = 'main';
+    currentParentId = 'style';
+    detailContent.style.opacity = 0;
+    
+    setTimeout(() => {
+      let continueHTML = '';
+      if (hasVisitedSub) {
+        continueHTML = `<div class="continue-btn" id="style-continue" onclick="closeStyleAndNext()" style="opacity: 0; animation: none;">Continue ↓</div>`;
+      }
+      
+      detailContent.innerHTML = `
+        ${heroImageHTML}
+        <div class="card-boxes fade-in-element" style="animation-delay: 0.1s; width: 100%; justify-content: center;">
+          <div class="box" style="border:none; background:transparent; box-shadow:none; color:#666;">风格与话术</div>
+        </div>
+        <div class="sub-options">
+          <div class="sub-card" style="--x-offset: -30px; animation-delay: 0.3s;" onclick="showSubDetail('病恋')">病恋</div>
+          <div class="sub-card" style="--x-offset: 40px; animation-delay: 0.5s;" onclick="showSubDetail('虚恋')">虚恋</div>
+          <div class="sub-card" style="--x-offset: -15px; animation-delay: 0.7s;" onclick="showSubDetail('Dom')">Dom</div>
+          <div class="sub-card" style="--x-offset: 25px; animation-delay: 0.9s;" onclick="showSubDetail('须知')">须知</div>
+        </div>
+        <div class="box-subtitle fade-in-element" style="margin-bottom: 0; animation-delay: 1.1s; width: 100%; text-align: center;">
+          万千宇宙 总有一条时间线 只属于你我
+        </div>
+        ${continueHTML}
+      `;
+      detailContent.style.opacity = 1;
+      detailContentBox.scrollTop = 0;
+      
+      if (hasVisitedSub) {
+        setTimeout(() => {
+          const btn = document.getElementById('style-continue');
+          if (btn) btn.style.animation = 'fadeInUp 1s ease forwards';
+        }, 1200);
+      }
+    }, 300);
+  };
+
+  window.closeStyleAndNext = function() {
+    detailOverlay.classList.remove('active');
+    isDetailOpen = false;
+    setTimeout(() => { goToSlide(3); }, 500);
+  };
+
+  // --- 板评及卡类详情 ---
+  window.openBoardOverlay = function() {
+    isDetailOpen = true;
+    detailOverlay.classList.add('active');
+    closeBtn.style.display = 'none'; 
+    currentLevel = 'main';
+    currentParentId = 'board';
+    detailContent.style.opacity = 0;
+    
+    setTimeout(() => {
+      detailContent.innerHTML = `
+        <div class="disease-header" style="margin-bottom: 20px;">
+          <div class="disease-title">「板评合集」</div>
+          <div class="disease-subtitle">——过往的评价</div>
+        </div>
+        
+        <div class="board-more-wrap" style="margin-top: 40px;">
+          <a href="https://www.kdocs.cn/l/cn8zRWwsUPAR" target="_blank" class="board-more-btn">点击此处查看更多</a>
+        </div>
+
+        <div style="height: 60px;"></div>
+
+        <img src="tu4.jpg" style="width: 100%; max-width: 500px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); margin: 20px 0;" onerror="this.src='https://via.placeholder.com/500x300/f0f0f0/999?text=tu4.jpg'">
+
+        <div style="height: 60px;"></div>
+
+        <div class="disease-header" style="margin-bottom: 20px;">
+          <div class="disease-title">「头牌卡」</div>
+          <div class="disease-subtitle">——专属展示</div>
+        </div>
+
+        <div class="board-more-wrap" style="margin-top: 40px;">
+          <a href="https://www.kdocs.cn/l/ceBfwYhTCGhR" target="_blank" class="board-more-btn">点击此处查看更多</a>
+        </div>
+
+        <div class="continue-btn" id="board-continue" onclick="closeBoardAndEnd()" style="opacity: 0; animation: none;">Continue ↓</div>
+      `;
+      detailContent.style.opacity = 1;
+      detailContentBox.scrollTop = 0;
+      
+      setTimeout(() => {
+        const btn = document.getElementById('board-continue');
+        if (btn) btn.style.animation = 'fadeInUp 1s ease forwards';
+      }, 1200);
+    }, 300);
+  };
+
+  window.closeBoardAndEnd = function() {
+    detailOverlay.classList.remove('active');
+    isDetailOpen = false;
+    
+    document.getElementById('polaroid-3').classList.remove('show');
+
+    setTimeout(() => {
+      const endSec = document.getElementById('end-section');
+      endSec.style.display = 'flex';
+      endSec.style.animation = 'none';
+      endSec.offsetHeight; 
+      endSec.style.animation = 'fadeInUp 1s ease forwards';
+      activeFlake = null; 
+      snowTooltip.classList.remove('show');
+      document.body.style.cursor = 'default';
+    }, 500);
+  };
+
+  // --- 具体分支 ---
+  window.showSubDetail = function(subName) {
+    currentLevel = 'sub';
+    hasVisitedSub = true;
+    detailContent.style.opacity = 0;
+    closeBtn.style.display = 'flex'; 
+    
+    setTimeout(() => {
+      if (subName === '须知') {
+        detailContent.innerHTML = `
+          <div class="disease-header" style="margin-bottom: 15px;">
+            <div class="disease-title">「须知」</div>
+          </div>
+          <div id="fog-hint-text" style="text-align: center; font-size: 14px; color: #888; letter-spacing: 2px; margin-bottom: 20px; animation: fadeInUp 1s ease 0.3s forwards; opacity: 0;">
+            在此处轻轻涂抹以获取讯息
+          </div>
+          <div class="notice-wrapper">
+            
+            <div class="notice-content">
+              <ul class="notice-list">
+                <li><span>•</span>请记住互相尊重是最基本原则</li>
+                <li><span>•</span>提前告知雷点，否则触雷概不负责</li>
+                <li><span>•</span>单口 | 半单口都需事先说明，不接受恋物</li>
+                <li><span>•</span>除明确要求外均默认自由发挥，如感到不适可以说“许厌 你够了”</li>
+                <li><span>•</span>拒男板，婉拒熟人披马甲 | 恶意挑刺 | 持续贬低 | 同行拼刺刀等行为</li>
+                <li><span>•</span>不擅长逻辑纯辩，非要用逻辑针锋对决战会看心情选择转诡辩吵架或者滑下位</li>
+              </ul>
+            </div>
+            
+            <img src="xuzhi.jpg" id="fog-cover-img" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 12px; cursor: crosshair; z-index: 10; 
+                 -webkit-mask-image: radial-gradient(circle at center, transparent 0px, black 0px); 
+                 mask-image: radial-gradient(circle at center, transparent 0px, black 0px);" 
+                 onerror="this.style.opacity='0'; this.style.pointerEvents='none';">
+          </div>
+        `;
+        detailContent.style.opacity = 1;
+        detailContentBox.scrollTop = 0; 
+        
+        const wrapper = detailContent.querySelector('.notice-wrapper');
+        const coverImg = detailContent.querySelector('#fog-cover-img');
+        const hintText = detailContent.querySelector('#fog-hint-text');
+        
+        let hasStartedMoving = false;
+        let prevX = 0, prevY = 0;
+        let movedDistance = 0;
+        let tapCount = 0; 
+        const UNLOCK_THRESHOLD = 2000; 
+        const TAP_THRESHOLD = 8; 
+
+        if (coverImg) {
+          const handleUnlock = (dist) => {
+            if (coverImg.style.pointerEvents === 'none') return;
+            
+            const progress = Math.min(dist / UNLOCK_THRESHOLD, 1);
+            const maxRadius = Math.max(wrapper.clientWidth, wrapper.clientHeight) * 0.8;
+            const easedProgress = 1 - Math.pow(1 - progress, 2);
+            const currentRadius = easedProgress * maxRadius;
+            
+            const maskStr = `radial-gradient(circle at center, transparent ${currentRadius}px, black ${currentRadius + 180}px)`;
+            coverImg.style.webkitMaskImage = maskStr;
+            coverImg.style.maskImage = maskStr;
+            
+            if (hintText) hintText.style.opacity = Math.max(1 - progress * 3, 0);
+          };
+
+          wrapper.addEventListener('pointerdown', (e) => {
+            if (coverImg.style.pointerEvents === 'none') return;
+            tapCount++;
+            movedDistance += 150; 
+            handleUnlock(movedDistance);
+
+            if (tapCount >= TAP_THRESHOLD || movedDistance >= UNLOCK_THRESHOLD) {
+              coverImg.style.transition = 'opacity 3s ease, filter 3s ease';
+              coverImg.style.opacity = '0';
+              coverImg.style.filter = 'blur(15px)';
+              coverImg.style.pointerEvents = 'none';
+              if(hintText) hintText.style.opacity = '0';
+            }
+          });
+
+          wrapper.addEventListener('pointermove', (e) => {
+            if (coverImg.style.pointerEvents === 'none') return;
+            
+            if (!hasStartedMoving) {
+              prevX = e.clientX;
+              prevY = e.clientY;
+              hasStartedMoving = true;
+              return;
+            }
+            
+            const dx = e.clientX - prevX;
+            const dy = e.clientY - prevY;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if (dist > 1) {
+              movedDistance += dist;
+              prevX = e.clientX;
+              prevY = e.clientY;
+              handleUnlock(movedDistance);
+
+              if (movedDistance >= UNLOCK_THRESHOLD) {
+                coverImg.style.transition = 'opacity 3s ease, filter 3s ease';
+                coverImg.style.opacity = '0';
+                coverImg.style.filter = 'blur(15px)';
+                coverImg.style.pointerEvents = 'none';
+                if(hintText) hintText.style.opacity = '0';
+              }
+            }
+          });
+        }
+        return;
+      }
+
+      let subtitle = "", cards = [], randomWords = [], footer = "", scriptData = null;
+      let layoutHTML = '';
+
+      if (subName === '病恋') {
+        subtitle = "——隐藏的偏执";
+        cards = ["高恋温", "中低恋疯", "文艺意识流", "忠诚下位", "欠揍狗1"];
+        randomWords = ["微擦", "高擦", "血暴", "拟物", "自毁", "伪君子", "动物塑", "救赎向"];
+        scriptData = [
+          { type: 'text', content: '你习惯在原地试探\n所以得给你抛出点诱饵不对么\n当你问“我对你有那么重要么”\n内心其实是在渴望一个肯定的答案吧\n大胆往前走吧\n你所想要的我没有理由拒绝\n除了靠近和拥吻以及这个答案\n你还想要什么呢\n会不会是夜幕之下一点点彼此触摸\n炙热呼吸交织在一起\n两颗心隔着胸腔共鸣\n说出来吧\n我会满足你的' },
+          { type: 'text', content: '在你的肩颈处重重咬下一口\n是对你分神的惩罚\n但更多的是我的欲念正在叫嚣\n因为我想在你的身躯留下属于我的痕迹\n不止牙印 还有红痕乃至淤青\n比如说情不自禁地掐在你的腰上\n先责怪我还是先出声痛呼呢' },
+          { type: 'placeholder' }, { type: 'placeholder' }, { type: 'placeholder' }
+        ];
+      } else if (subName === '虚恋') {
+        subtitle = "——秩序外一秒";
+        cards = ["理智型", "微恶趣味", "轻浮暧昧", "右位讨好型"];
+        footer = "默认恋人关系or只调情不负责";
+        scriptData = [{ type: 'placeholder' }, { type: 'placeholder' }, { type: 'placeholder' }, { type: 'placeholder' }];
+      } else if (subName === 'Dom') {
+        subtitle = "——将权力让渡";
+        cards = ["温柔引导", "规则训诫", "身心控制", "白骑士", "纯调涉三"];
+        footer = "务必记住 权力游戏只在自愿前提下开启";
+        scriptData = [{ type: 'placeholder' }, { type: 'placeholder' }, { type: 'placeholder' }, { type: 'placeholder' }, { type: 'placeholder' }];
+      }
+
+      const svgIcon = `<svg class="snow-icon-svg" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2"><path d="M50 5 L50 95 M5 50 L95 50 M18 18 L82 82 M18 82 L82 18" /></svg>`;
+      
+      let cardsHTML = '';
+      cards.forEach((c, index) => {
+        const offsetX = Math.floor(Math.random() * 60) - 30; 
+        cardsHTML += `<div class="disease-card" style="--x-offset: ${offsetX}px; animation-delay: ${0.3 + index * 0.4}s;">${svgIcon} ${c}</div>`;
+      });
+
+      let wordsHTML = '';
+      randomWords.forEach((w, index) => {
+        const delay = 2.0 + index * 0.1; 
+        wordsHTML += `<span class="r-word" style="animation: wordAppear 1.2s ease forwards ${delay}s, wordFloat 3s ease-in-out infinite alternate ${delay + 1.2}s;">${w}</span>`;
+      });
+
+      let scriptHTML = '';
+      if (scriptData) {
+        let scriptCardsHTML = '';
+        scriptData.forEach((item, index) => {
+          const offsetX = Math.floor(Math.random() * 80) - 40;
+          const delay = 0.2 + index * 0.3;
+          if (item.type === 'text') {
+            const formattedText = item.content.replace(/\n/g, '<br>');
+            scriptCardsHTML += `<div class="script-card" style="--x-offset: ${offsetX}px; animation-delay: ${delay}s;">${formattedText}</div>`;
+          } else {
+            scriptCardsHTML += `<div class="placeholder-card" style="--x-offset: ${offsetX}px; animation-delay: ${delay}s;">预留位置</div>`;
+          }
+        });
+        scriptHTML = `
+          <div class="script-toggle" onclick="document.getElementById('script-container').style.display='flex'; this.style.display='none';">·话术展示</div>
+          <div class="script-container" id="script-container">
+            ${scriptCardsHTML}
+            <div class="script-footer" style="animation-delay: ${0.2 + scriptData.length * 0.3 + 0.2}s;">*以上片段均截取自正常单内</div>
+          </div>
+        `;
+      }
+
+      if (subName === '病恋') {
+        layoutHTML = `<div class="split-layout"><div class="split-left"><div class="disease-cards" style="margin:0;">${cardsHTML}</div></div><div class="split-right"><img src="tu1.jpg" class="detail-image-card" onerror="this.src='https://via.placeholder.com/400x300/f0f0f0/999?text=tu1.jpg'"></div></div>`;
+      } else if (subName === '虚恋') {
+        layoutHTML = `<div class="split-layout"><div class="split-left"><img src="tu2.jpg" class="detail-image-card" onerror="this.src='https://via.placeholder.com/400x300/f0f0f0/999?text=tu2.jpg'"></div><div class="split-right"><div class="disease-cards" style="margin:0;">${cardsHTML}</div></div></div>`;
+      } else if (subName === 'Dom') {
+        layoutHTML = `<div class="split-layout"><div class="split-left"><div class="disease-cards" style="margin:0;">${cardsHTML}</div></div><div class="split-right"><img src="tu3.jpg" class="detail-image-card" onerror="this.src='https://via.placeholder.com/400x300/f0f0f0/999?text=tu3.jpg'"></div></div>`;
+      }
+
+      detailContent.innerHTML = `
+        <div class="disease-header"><div class="disease-title">「${subName}」</div><div class="disease-subtitle">${subtitle}</div></div>
+        ${layoutHTML}
+        ${randomWords.length > 0 ? `<div class="random-element-title">随机掉落元素：</div><div class="random-words-container">${wordsHTML}</div><div class="dots">...</div>` : ''}
+        ${footer ? `<div class="footer-text">${footer}</div>` : ''}
+        ${scriptHTML}
+      `;
+      detailContent.style.opacity = 1;
+      detailContentBox.scrollTop = 0;
+    }, 300);
+  };
+
+  /* ==================== 终章分支控制 ==================== */
+  
+  window.clickEndYes = function() {
+    document.getElementById('end-section').style.opacity = '0';
+    document.getElementById('polaroid-3').classList.remove('show');
+    
+    const endingLayer = document.getElementById('ending-layer');
+    const endingYes = document.getElementById('ending-yes');
+    
+    endingLayer.classList.add('active');
+    endingYes.style.display = 'flex';
+    endingYes.offsetHeight; 
+    endingYes.style.opacity = '1';
+  };
+
+  window.clickEndNo = function() {
+    document.getElementById('end-section').style.opacity = '0';
+    document.getElementById('polaroid-3').classList.remove('show');
+    
+    const endingLayer = document.getElementById('ending-layer');
+    const endingNo = document.getElementById('ending-no');
+    
+    endingLayer.classList.add('active');
+    endingNo.style.display = 'flex';
+    endingNo.offsetHeight; 
+    endingNo.style.opacity = '1';
+  };
+
+  /* ==================== 音乐播放控制 ==================== */
+  const bgm = document.getElementById('bgm');
+  const musicBtn = document.getElementById('music-btn');
+
+  bgm.play().then(() => {
+    musicBtn.classList.add('playing');
+  }).catch(err => {
+    const playOnInteraction = () => {
+      bgm.play().then(() => {
+        musicBtn.classList.add('playing');
+        document.removeEventListener('click', playOnInteraction);
+        document.removeEventListener('touchstart', playOnInteraction);
+      }).catch(e => {});
+    };
+    document.addEventListener('click', playOnInteraction);
+    document.addEventListener('touchstart', playOnInteraction);
+  });
+
+  musicBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); 
+    if (bgm.paused) {
+      bgm.play().then(() => {
+        musicBtn.classList.add('playing');
+      }).catch(err => {
+        musicBtn.classList.remove('playing');
+      });
+    } else {
+      bgm.pause();
+      musicBtn.classList.remove('playing');
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
