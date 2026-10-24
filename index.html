@@ -268,6 +268,7 @@
     cursor: pointer; transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
     z-index: 1000; backdrop-filter: blur(10px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    opacity: 1;
   }
   .close-btn:hover { color: #9e2a2b; background: #fff; transform: scale(1.1); }
 
@@ -355,7 +356,7 @@
   }
   .script-footer { margin-top: 30px; font-size: 13px; color: #888; letter-spacing: 1.5px; text-align: center; width: 100%; opacity: 0; animation: fadeInUp 1s ease forwards; }
 
-  /* ================= 须知文案排版 ================= */
+  /* ================= 须知文案排版（纯净轻量版） ================= */
   .notice-wrapper {
     width: 100%;
     max-width: 800px; 
@@ -365,9 +366,25 @@
     position: relative;
     overflow: hidden;
     background: rgba(255,255,255,0.4);
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
+  
   .notice-content {
     padding: 20px;
+    opacity: 0;
+    filter: blur(10px);
+    transform: scale(0.98);
+    transition: all 2s ease;
+    pointer-events: none;
+  }
+  .notice-content.show-text {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+    pointer-events: auto;
   }
   
   .notice-list {
@@ -381,11 +398,38 @@
     position: relative; padding-left: 20px;
     color: #333;
     line-height: 1.6;
-    opacity: 0;
-    animation: fadeInUp 2s ease 1.5s forwards;
   }
   .notice-list li span {
     color:#333; font-size: 1.2em; margin-right:6px;
+  }
+
+  /* 迷雾遮罩 */
+  .fog-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(245, 248, 250, 0.9);
+    backdrop-filter: blur(12px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .fog-overlay.dismissed {
+    opacity: 0;
+    filter: blur(20px);
+    pointer-events: none;
+  }
+  .fog-hint {
+    font-size: 16px;
+    color: #666;
+    letter-spacing: 2px;
+    animation: breatheFog 2s infinite alternate;
+  }
+  @keyframes breatheFog {
+    0% { opacity: 0.5; transform: scale(0.98); }
+    100% { opacity: 1; transform: scale(1.02); }
   }
   
   /* 板评排版 */
@@ -437,7 +481,7 @@
     .polaroid.left { left: 2%; }
     .polaroid.right { right: 2%; }
 
-    /* ★ 修复：手机端返回键精准贴紧右上角，防止遮挡 */
+    /* ★ 修复：手机端返回键 */
     .close-btn {
       top: 15px; 
       right: 15px;
@@ -445,6 +489,19 @@
       height: 38px;
       font-size: 20px;
       background: rgba(255, 255, 255, 0.85);
+    }
+
+    /* ★ 修复：手机端音乐按键贴右上角，与返回键并排 */
+    .music-btn {
+      top: 15px;
+      right: 65px;
+      width: 38px;
+      height: 38px;
+    }
+
+    /* ★ 修复：手机端 Tooltip 强制显示在下方，且重置 transform 防止乱飘 */
+    .snow-tooltip.show {
+      transform: translate(-50%, 0) scale(1) !important; 
     }
   }
 </style>
@@ -511,21 +568,21 @@
   <!-- Slide 1: 自我简介 -->
   <div class="slide" id="page-1">
     <div class="polaroid left" id="polaroid-1">
-      <img src="pai1.jpg" loading="lazy" decoding="async" onerror="this.src='https://via.placeholder.com/180x180/f0f0f0/999?text=pai1.jpg'">
+      <img src="pai1.jpg" decoding="async" onerror="this.src='https://via.placeholder.com/180x180/f0f0f0/999?text=pai1.jpg'">
     </div>
   </div>
 
   <!-- Slide 2: 风格与话术 -->
   <div class="slide" id="page-2">
     <div class="polaroid right" id="polaroid-2">
-      <img src="pai2.jpg" loading="lazy" decoding="async" onerror="this.src='https://via.placeholder.com/180x180/f0f0f0/999?text=pai2.jpg'">
+      <img src="pai2.jpg" decoding="async" onerror="this.src='https://via.placeholder.com/180x180/f0f0f0/999?text=pai2.jpg'">
     </div>
   </div>
 
   <!-- Slide 3: 板评及卡类 -->
   <div class="slide" id="page-3">
     <div class="polaroid left" id="polaroid-3">
-      <img src="pai3.jpg" loading="lazy" decoding="async" onerror="this.src='https://via.placeholder.com/180x180/f0f0f0/999?text=pai3.jpg'">
+      <img src="pai3.jpg" decoding="async" onerror="this.src='https://via.placeholder.com/180x180/f0f0f0/999?text=pai3.jpg'">
     </div>
     
     <div id="end-section" style="display: none; flex-direction: column; align-items: center; opacity: 0; z-index: 100;">
@@ -749,10 +806,9 @@
           snowTooltip.textContent = f.tip;
           snowTooltip.style.left = f.x + 'px';
           
-          // ★ 修复：电脑端在上方，手机端强制在下方显示，防止被手指挡住
+          // 手机端强制在下方显示
           if (isMobile) {
-            snowTooltip.style.top = (f.y + f.r * 1.2 * f.scale + 15) + 'px';
-            snowTooltip.style.transform = 'translate(-50%, 0) scale(1)'; // 重置手机端动画位置
+            snowTooltip.style.top = (f.y + f.r * 1.2 * f.scale + 10) + 'px';
           } else {
             snowTooltip.style.top = (f.y - f.r * f.scale * 1.2) + 'px'; 
           }
@@ -972,7 +1028,7 @@
   });
 
   const heroImageHTML = `
-    <img src="IMG_3454.jpg" alt="雪花特写" class="detail-hero-image" loading="lazy" decoding="async" onerror="this.style.display='none'">
+    <img src="IMG_3454.jpg" alt="雪花特写" class="detail-hero-image" decoding="async" onerror="this.style.display='none'">
   `;
 
   // --- 自我简介详情 ---
@@ -1095,7 +1151,7 @@
 
         <div style="height: 60px;"></div>
 
-        <img src="tu4.jpg" style="width: 100%; max-width: 500px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); margin: 20px 0;" loading="lazy" decoding="async" onerror="this.src='https://via.placeholder.com/500x300/f0f0f0/999?text=tu4.jpg'">
+        <img src="tu4.jpg" style="width: 100%; max-width: 500px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); margin: 20px 0;" decoding="async" onerror="this.src='https://via.placeholder.com/500x300/f0f0f0/999?text=tu4.jpg'">
 
         <div style="height: 60px;"></div>
 
@@ -1143,20 +1199,27 @@
     currentLevel = 'sub';
     hasVisitedSub = true;
     detailContent.style.opacity = 0;
-    closeBtn.style.display = 'flex'; 
+    
+    // 如果是须知页面，隐藏返回键（等文字出来后由 JS 控制显示）
+    if (subName === '须知') {
+      closeBtn.style.opacity = '0';
+      closeBtn.style.pointerEvents = 'none';
+    } else {
+      closeBtn.style.display = 'flex'; 
+      closeBtn.style.opacity = '1';
+      closeBtn.style.pointerEvents = 'auto';
+    }
     
     setTimeout(() => {
       if (subName === '须知') {
+        // ★ 全新须知的轻量级遮罩设计
         detailContent.innerHTML = `
-          <div class="disease-header" style="margin-bottom: 15px;">
+          <div class="disease-header" style="margin-bottom: 20px;">
             <div class="disease-title">「须知」</div>
           </div>
-          <div id="fog-hint-text" style="text-align: center; font-size: 14px; color: #888; letter-spacing: 2px; margin-bottom: 20px; animation: fadeInUp 1s ease 0.3s forwards; opacity: 0;">
-            在此处轻轻涂抹以获取讯息
-          </div>
-          <div class="notice-wrapper">
-            
-            <div class="notice-content">
+          <div class="notice-wrapper" id="fog-wrapper">
+            <!-- 底层文字 -->
+            <div class="notice-content" id="notice-text">
               <ul class="notice-list">
                 <li><span>•</span>请记住互相尊重是最基本原则</li>
                 <li><span>•</span>提前告知雷点，否则触雷概不负责</li>
@@ -1167,87 +1230,32 @@
               </ul>
             </div>
             
-            <img src="xuzhi.jpg" id="fog-cover-img" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 12px; cursor: crosshair; z-index: 10; 
-                 -webkit-mask-image: radial-gradient(circle at center, transparent 0px, black 0px); 
-                 mask-image: radial-gradient(circle at center, transparent 0px, black 0px);" 
-                 loading="lazy" decoding="async" onerror="this.style.opacity='0'; this.style.pointerEvents='none';">
+            <!-- 覆盖迷雾 -->
+            <div class="fog-overlay" id="fog-cover">
+              <div class="fog-hint">轻触屏幕，拨开迷雾</div>
+            </div>
           </div>
         `;
         detailContent.style.opacity = 1;
         detailContentBox.scrollTop = 0; 
         
-        const wrapper = detailContent.querySelector('.notice-wrapper');
-        const coverImg = detailContent.querySelector('#fog-cover-img');
-        const hintText = detailContent.querySelector('#fog-hint-text');
+        // 绑定点击消散逻辑
+        const fogCover = document.getElementById('fog-cover');
+        const noticeText = document.getElementById('notice-text');
         
-        let hasStartedMoving = false;
-        let prevX = 0, prevY = 0;
-        let movedDistance = 0;
-        let tapCount = 0; 
-        const UNLOCK_THRESHOLD = 2000; 
-        const TAP_THRESHOLD = 8; 
-
-        if (coverImg) {
-          const handleUnlock = (dist) => {
-            if (coverImg.style.pointerEvents === 'none') return;
-            
-            const progress = Math.min(dist / UNLOCK_THRESHOLD, 1);
-            const maxRadius = Math.max(wrapper.clientWidth, wrapper.clientHeight) * 0.8;
-            const easedProgress = 1 - Math.pow(1 - progress, 2);
-            const currentRadius = easedProgress * maxRadius;
-            
-            const maskStr = `radial-gradient(circle at center, transparent ${currentRadius}px, black ${currentRadius + 180}px)`;
-            coverImg.style.webkitMaskImage = maskStr;
-            coverImg.style.maskImage = maskStr;
-            
-            if (hintText) hintText.style.opacity = Math.max(1 - progress * 3, 0);
-          };
-
-          wrapper.addEventListener('pointerdown', (e) => {
-            if (coverImg.style.pointerEvents === 'none') return;
-            tapCount++;
-            movedDistance += 150; 
-            handleUnlock(movedDistance);
-
-            if (tapCount >= TAP_THRESHOLD || movedDistance >= UNLOCK_THRESHOLD) {
-              coverImg.style.transition = 'opacity 3s ease, filter 3s ease';
-              coverImg.style.opacity = '0';
-              coverImg.style.filter = 'blur(15px)';
-              coverImg.style.pointerEvents = 'none';
-              if(hintText) hintText.style.opacity = '0';
-            }
-          });
-
-          wrapper.addEventListener('pointermove', (e) => {
-            if (coverImg.style.pointerEvents === 'none') return;
-            
-            if (!hasStartedMoving) {
-              prevX = e.clientX;
-              prevY = e.clientY;
-              hasStartedMoving = true;
-              return;
-            }
-            
-            const dx = e.clientX - prevX;
-            const dy = e.clientY - prevY;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            
-            if (dist > 1) {
-              movedDistance += dist;
-              prevX = e.clientX;
-              prevY = e.clientY;
-              handleUnlock(movedDistance);
-
-              if (movedDistance >= UNLOCK_THRESHOLD) {
-                coverImg.style.transition = 'opacity 3s ease, filter 3s ease';
-                coverImg.style.opacity = '0';
-                coverImg.style.filter = 'blur(15px)';
-                coverImg.style.pointerEvents = 'none';
-                if(hintText) hintText.style.opacity = '0';
-              }
-            }
-          });
-        }
+        fogCover.addEventListener('pointerdown', () => {
+          // 遮罩淡出变模糊
+          fogCover.classList.add('dismissed');
+          // 文字从模糊到清晰浮现
+          noticeText.classList.add('show-text');
+          
+          // 2秒后显示返回键
+          setTimeout(() => {
+            closeBtn.style.opacity = '1';
+            closeBtn.style.pointerEvents = 'auto';
+          }, 1800);
+        });
+        
         return;
       }
 
@@ -1312,11 +1320,11 @@
       }
 
       if (subName === '病恋') {
-        layoutHTML = `<div class="split-layout"><div class="split-left"><div class="disease-cards" style="margin:0;">${cardsHTML}</div></div><div class="split-right"><img src="tu1.jpg" class="detail-image-card" loading="lazy" decoding="async" onerror="this.src='https://via.placeholder.com/400x300/f0f0f0/999?text=tu1.jpg'"></div></div>`;
+        layoutHTML = `<div class="split-layout"><div class="split-left"><div class="disease-cards" style="margin:0;">${cardsHTML}</div></div><div class="split-right"><img src="tu1.jpg" class="detail-image-card" decoding="async" onerror="this.src='https://via.placeholder.com/400x300/f0f0f0/999?text=tu1.jpg'"></div></div>`;
       } else if (subName === '虚恋') {
-        layoutHTML = `<div class="split-layout"><div class="split-left"><img src="tu2.jpg" class="detail-image-card" loading="lazy" decoding="async" onerror="this.src='https://via.placeholder.com/400x300/f0f0f0/999?text=tu2.jpg'"></div><div class="split-right"><div class="disease-cards" style="margin:0;">${cardsHTML}</div></div></div>`;
+        layoutHTML = `<div class="split-layout"><div class="split-left"><img src="tu2.jpg" class="detail-image-card" decoding="async" onerror="this.src='https://via.placeholder.com/400x300/f0f0f0/999?text=tu2.jpg'"></div><div class="split-right"><div class="disease-cards" style="margin:0;">${cardsHTML}</div></div></div>`;
       } else if (subName === 'Dom') {
-        layoutHTML = `<div class="split-layout"><div class="split-left"><div class="disease-cards" style="margin:0;">${cardsHTML}</div></div><div class="split-right"><img src="tu3.jpg" class="detail-image-card" loading="lazy" decoding="async" onerror="this.src='https://via.placeholder.com/400x300/f0f0f0/999?text=tu3.jpg'"></div></div>`;
+        layoutHTML = `<div class="split-layout"><div class="split-left"><div class="disease-cards" style="margin:0;">${cardsHTML}</div></div><div class="split-right"><img src="tu3.jpg" class="detail-image-card" decoding="async" onerror="this.src='https://via.placeholder.com/400x300/f0f0f0/999?text=tu3.jpg'"></div></div>`;
       }
 
       detailContent.innerHTML = `
