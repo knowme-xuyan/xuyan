@@ -769,27 +769,29 @@
         const hitR = Math.max(50, f.r * f.scale * 1.4);
         isHover = (dx * dx + dy * dy <= hitR * hitR);
       } else {
-        isHover = true; 
+        // ★ 修改点1：手机端必须等雪花降落完成（isDropped为true）后，再开启显示
+        isHover = f.isDropped; 
       }
       
       if (isHover !== f.hover) {
         f.hover = isHover;
         if (f.hover) {
           snowTooltip.textContent = f.tip;
-          snowTooltip.style.left = f.x + 'px';
-          
-          // 手机端强制在下方显示，电脑端在上方
-          if (isMobile) {
-            snowTooltip.style.top = (f.y + f.r * 1.2 * f.scale + 15) + 'px';
-          } else {
-            snowTooltip.style.top = (f.y - f.r * f.scale * 1.2) + 'px'; 
-          }
-          
           snowTooltip.classList.add('show');
           if (!isMobile) document.body.style.cursor = 'pointer';
         } else {
           snowTooltip.classList.remove('show');
           if (!isMobile) document.body.style.cursor = 'default';
+        }
+      }
+
+      // ★ 修改点2：将位置计算移出判断，只要显示着，就实时跟随雪花坐标，解决飘在天上或错位的问题
+      if (f.hover) {
+        snowTooltip.style.left = f.x + 'px';
+        if (isMobile) {
+          snowTooltip.style.top = (f.y + f.r * 1.2 * f.scale + 15) + 'px';
+        } else {
+          snowTooltip.style.top = (f.y - f.r * f.scale * 1.2) + 'px'; 
         }
       }
 
